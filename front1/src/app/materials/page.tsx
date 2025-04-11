@@ -147,14 +147,121 @@ export default function Materials() {
   const [selectedSubject, setSelectedSubject] = useState("");
   const [topics, setTopics] = useState<string[]>([]);
   const [showTopics, setShowTopics] = useState(false);
+  const [newTopic, setNewTopic] = useState("");
+  const [topicsData, setTopicsData] = useState(educationTopics);
 
   // Обработчик кнопки "Показать темы"
   const handleShowTopics = () => {
     if (selectedClass && selectedSubject) {
-      setTopics(educationTopics[selectedClass]?.[selectedSubject] || []);
+      setTopics(topicsData[selectedClass]?.[selectedSubject] || []);
       setShowTopics(true);
     } else {
       setShowTopics(false);
+    }
+  };
+
+  // Обработчик добавления новой темы
+  const handleAddTopic = () => {
+    if (newTopic && selectedClass && selectedSubject) {
+      // Создаем копию данных для обновления
+      const updatedTopicsData = {...topicsData};
+      
+      // Проверяем существует ли выбранный класс и предмет в данных
+      if (!updatedTopicsData[selectedClass]) {
+        updatedTopicsData[selectedClass] = {};
+      }
+      
+      if (!updatedTopicsData[selectedClass][selectedSubject]) {
+        updatedTopicsData[selectedClass][selectedSubject] = [];
+      }
+      
+      // Добавляем новую тему
+      updatedTopicsData[selectedClass][selectedSubject] = [
+        ...updatedTopicsData[selectedClass][selectedSubject],
+        newTopic
+      ];
+      
+      // Обновляем состояние
+      setTopicsData(updatedTopicsData);
+      setTopics(updatedTopicsData[selectedClass][selectedSubject]);
+      setNewTopic("");
+    }
+  };
+
+  // Обработчик удаления темы
+  const handleDeleteTopic = (indexToDelete: number) => {
+    if (selectedClass && selectedSubject) {
+      // Создаем копию данных для обновления
+      const updatedTopicsData = {...topicsData};
+      
+      // Проверяем существует ли выбранный класс и предмет в данных
+      if (updatedTopicsData[selectedClass] && 
+          updatedTopicsData[selectedClass][selectedSubject]) {
+        // Удаляем тему по индексу
+        updatedTopicsData[selectedClass][selectedSubject] = 
+          updatedTopicsData[selectedClass][selectedSubject].filter((_, index) => index !== indexToDelete);
+        
+        // Обновляем состояние
+        setTopicsData(updatedTopicsData);
+        setTopics(updatedTopicsData[selectedClass][selectedSubject]);
+      }
+    }
+  };
+
+  // Обработчик нажатия Enter в поле ввода
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && newTopic) {
+      handleAddTopic();
+    }
+  };
+
+  // Встроенные стили для формы добавления темы
+  const inlineStyles = {
+    addTopicContainer: {
+      backgroundColor: "#f0f4ff",
+      padding: "1.5rem",
+      borderRadius: "0.5rem",
+      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.05)",
+      marginBottom: "2rem",
+    },
+    addTopicTitle: {
+      fontSize: "1.2rem",
+      fontWeight: 600,
+      color: "#1a237e",
+      marginBottom: "1rem",
+    },
+    addTopicForm: {
+      display: "flex",
+      gap: "1rem",
+      alignItems: "center",
+    },
+    topicInput: {
+      flex: 1,
+      padding: "0.5rem 1rem",
+      border: "1px solid #ccc",
+      borderRadius: "0.25rem",
+      fontSize: "1rem",
+      outline: "none",
+      height: "38px",
+      boxSizing: "border-box" as const,
+    },
+    addTopicBtn: {
+      display: "inline-block",
+      backgroundColor: "#1a237e",
+      color: "white",
+      padding: "0.5rem 1.5rem",
+      border: "none",
+      borderRadius: "0.25rem",
+      cursor: "pointer",
+      fontSize: "1rem",
+      height: "38px",
+      minWidth: "120px",
+      fontWeight: 500,
+      boxSizing: "border-box" as const,
+    },
+    addTopicBtnDisabled: {
+      backgroundColor: "#9e9e9e",
+      cursor: "not-allowed",
     }
   };
 
@@ -213,30 +320,63 @@ export default function Materials() {
           </div>
           
           {showTopics && (
-            <div className={styles.topicsContainer}>
-              <h2 className={styles.topicsTitle}>
-                Темы по предмету &quot;{selectedSubject}&quot; для {selectedClass} класса
-              </h2>
+            <>
+              <div style={inlineStyles.addTopicContainer}>
+                <h3 style={inlineStyles.addTopicTitle}>Добавить новую тему</h3>
+                <div style={inlineStyles.addTopicForm}>
+                  <input
+                    type="text"
+                    style={inlineStyles.topicInput}
+                    placeholder="Введите название новой темы"
+                    value={newTopic}
+                    onChange={(e) => setNewTopic(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                  <button
+                    style={{
+                      ...inlineStyles.addTopicBtn,
+                      ...(newTopic ? {} : inlineStyles.addTopicBtnDisabled)
+                    }}
+                    onClick={handleAddTopic}
+                    disabled={!newTopic}
+                  >
+                    Добавить
+                  </button>
+                </div>
+              </div>
               
-              {topics.length > 0 ? (
-                <ul className={styles.topicsList}>
-                  {topics.map((topic, index) => (
-                    <li key={index} className={styles.topicItem}>
-                      <div className={styles.topicCard}>
-                        <h3 className={styles.topicTitle}>{topic}</h3>
-                        <a href="#" className={styles.topicLink}>
-                          Перейти к материалам
-                        </a>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={styles.noTopicsMessage}>
-                  Темы для данного класса и предмета не найдены
-                </p>
-              )}
-            </div>
+              <div className={styles.topicsContainer}>
+                <h2 className={styles.topicsTitle}>
+                  Темы по предмету &quot;{selectedSubject}&quot; для {selectedClass} класса
+                </h2>
+                
+                {topics.length > 0 ? (
+                  <ul className={styles.topicsList}>
+                    {topics.map((topic, index) => (
+                      <li key={index} className={styles.topicItem}>
+                        <div className={styles.topicCard}>
+                          <button
+                            onClick={() => handleDeleteTopic(index)}
+                            className={styles.deleteBtn}
+                            title="Удалить тему"
+                          >
+                            ✕
+                          </button>
+                          <h3 className={styles.topicTitle}>{topic}</h3>
+                          <a href="#" className={styles.topicLink}>
+                            Перейти к материалам
+                          </a>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.noTopicsMessage}>
+                    Темы для данного класса и предмета не найдены
+                  </p>
+                )}
+              </div>
+            </>
           )}
         </div>
       </main>
