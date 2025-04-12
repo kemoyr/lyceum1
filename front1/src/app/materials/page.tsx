@@ -363,7 +363,7 @@ export default function Materials() {
                             ✕
                           </button>
                           <h3 className={styles.topicTitle}>{topic}</h3>
-                          <a href="#" className={styles.topicLink}>
+                          <a href={`/lessons?class=${selectedClass}&subject=${encodeURIComponent(selectedSubject)}&topic=${encodeURIComponent(topic)}`} className={styles.topicLink}>
                             Перейти к материалам
                           </a>
                         </div>
