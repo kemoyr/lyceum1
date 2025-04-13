@@ -3,7 +3,6 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navbar from "../../navbar/Navbar";
-import styles from "./page.module.css";
 import Link from "next/link";
 
 // Типы для учебных материалов
@@ -39,7 +38,7 @@ type LessonMaterialsType = {
 };
 
 // Примеры данных с учебными материалами
-const lessonMaterials: LessonMaterialsType = {
+const lessonMaterialsData: LessonMaterialsType = {
   "Математика": {
     "Целые числа и действия над ними": {
       theory: {
@@ -263,6 +262,20 @@ export default function Lessons() {
   const [topic, setTopic] = useState("");
   const [lessonData, setLessonData] = useState<LessonData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [lessonMaterials, setLessonMaterials] = useState<LessonMaterialsType>(lessonMaterialsData);
+  
+  // Состояние для форм редактирования
+  const [theoryContent, setTheoryContent] = useState("");
+  const [practiceContent, setPracticeContent] = useState("");
+  const [theoryResources, setTheoryResources] = useState<Resource[]>([]);
+  const [practiceResources, setPracticeResources] = useState<Resource[]>([]);
+  const [tasks, setTasks] = useState<string[]>([]);
+  
+  // Вспомогательные состояния для добавления новых элементов
+  const [newTheoryResource, setNewTheoryResource] = useState<Resource>({ title: "" });
+  const [newPracticeResource, setNewPracticeResource] = useState<Resource>({ title: "" });
+  const [newTask, setNewTask] = useState("");
 
   useEffect(() => {
     const classParam = searchParams.get("class");
@@ -277,120 +290,453 @@ export default function Lessons() {
     setLoading(true);
     setTimeout(() => {
       if (subjectParam && topicParam && lessonMaterials[subjectParam]?.[topicParam]) {
-        setLessonData(lessonMaterials[subjectParam][topicParam]);
+        const currentData = lessonMaterials[subjectParam][topicParam];
+        setLessonData(currentData);
+        
+        // Инициализация состояний формы для режима редактирования
+        setTheoryContent(currentData.theory.content);
+        setPracticeContent(currentData.practice.content);
+        setTheoryResources([...currentData.theory.additional]);
+        setPracticeResources([...currentData.practice.additional]);
+        setTasks([...currentData.practice.tasks]);
       } else {
+        // Инициализация пустого материала, если его нет
         setLessonData(null);
+        setTheoryContent("");
+        setPracticeContent("");
+        setTheoryResources([]);
+        setPracticeResources([]);
+        setTasks([]);
       }
       setLoading(false);
     }, 500);
-  }, [searchParams]);
+  }, [searchParams, lessonMaterials]);
+
+  // Обработчики для формы редактирования
+  const handleAddTheoryResource = () => {
+    if (newTheoryResource.title.trim()) {
+      setTheoryResources([...theoryResources, { ...newTheoryResource }]);
+      setNewTheoryResource({ title: "" });
+    }
+  };
+
+  const handleAddPracticeResource = () => {
+    if (newPracticeResource.title.trim()) {
+      setPracticeResources([...practiceResources, { ...newPracticeResource }]);
+      setNewPracticeResource({ title: "" });
+    }
+  };
+
+  const handleAddTask = () => {
+    if (newTask.trim()) {
+      setTasks([...tasks, newTask]);
+      setNewTask("");
+    }
+  };
+
+  const handleDeleteTheoryResource = (index: number) => {
+    setTheoryResources(theoryResources.filter((_, i) => i !== index));
+  };
+
+  const handleDeletePracticeResource = (index: number) => {
+    setPracticeResources(practiceResources.filter((_, i) => i !== index));
+  };
+
+  const handleDeleteTask = (index: number) => {
+    setTasks(tasks.filter((_, i) => i !== index));
+  };
+
+  // Переключение режима редактирования
+  const toggleEditMode = () => {
+    setEditMode(!editMode);
+  };
+
+  // Сохранение изменений
+  const handleSaveChanges = () => {
+    if (!subject || !topic) return;
+
+    // Создаем обновленный объект с данными урока
+    const updatedLessonData: LessonData = {
+      theory: {
+        type: "text",
+        content: theoryContent,
+        additional: theoryResources
+      },
+      practice: {
+        type: "tasks",
+        content: practiceContent,
+        tasks: tasks,
+        additional: practiceResources
+      }
+    };
+
+    // Обновляем локальное состояние
+    const updatedMaterials = { ...lessonMaterials };
+    
+    // Создаем объекты для темы/предмета, если их нет
+    if (!updatedMaterials[subject]) {
+      updatedMaterials[subject] = {};
+    }
+    
+    updatedMaterials[subject][topic] = updatedLessonData;
+    setLessonMaterials(updatedMaterials);
+    setLessonData(updatedLessonData);
+    setEditMode(false);
+  };
+
+  const handleCancelEdit = () => {
+    // Отмена редактирования - возвращаем исходные данные
+    if (lessonData) {
+      setTheoryContent(lessonData.theory.content);
+      setPracticeContent(lessonData.practice.content);
+      setTheoryResources([...lessonData.theory.additional]);
+      setPracticeResources([...lessonData.practice.additional]);
+      setTasks([...lessonData.practice.tasks]);
+    }
+    setEditMode(false);
+  };
+
+  // Форма для редактирования материала
+  const renderEditForm = () => {
+    return (
+      <div className="card p-4 mb-4 shadow-sm">
+        {/* Редактирование теоретической части */}
+        <section className="mb-4 pb-4 border-bottom">
+          <h3 className="fw-bold mb-3" style={{color: "#1a237e"}}>1. Теоретическая часть</h3>
+          
+          <div className="mb-3">
+            <label htmlFor="theoryContent" className="form-label fw-medium">Текст теоретического материала:</label>
+            <textarea 
+              id="theoryContent"
+              className="form-control"
+              value={theoryContent}
+              onChange={(e) => setTheoryContent(e.target.value)}
+              rows={8}
+              placeholder="Введите теоретический материал..."
+            />
+          </div>
+          
+          <div className="bg-light p-3 rounded mt-4">
+            <h4 className="fw-medium mb-3" style={{color: "#1a237e"}}>Дополнительные материалы:</h4>
+            
+            <ul className="list-group mb-3">
+              {theoryResources.map((resource, index) => (
+                <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                  <div className="me-auto">
+                    <div className="fw-medium">{resource.title}</div>
+                    {resource.url && <div className="small" style={{color: "#1a237e"}}>{resource.url}</div>}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm rounded-circle"
+                    style={{width: '30px', height: '30px', padding: '0'}}
+                    onClick={() => handleDeleteTheoryResource(index)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+            
+            <div className="row g-2">
+              <div className="col-md-5">
+                <input
+                  type="text"
+                  placeholder="Название материала"
+                  value={newTheoryResource.title}
+                  onChange={(e) => setNewTheoryResource({ ...newTheoryResource, title: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-md-5">
+                <input
+                  type="text"
+                  placeholder="URL (необязательно)"
+                  value={newTheoryResource.url || ""}
+                  onChange={(e) => setNewTheoryResource({ ...newTheoryResource, url: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-md-2">
+                <button
+                  type="button"
+                  className="btn text-white w-100"
+                  style={{backgroundColor: "#1a237e"}}
+                  onClick={handleAddTheoryResource}
+                >
+                  Добавить
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        {/* Редактирование практической части */}
+        <section className="mb-4">
+          <h3 className="fw-bold mb-3" style={{color: "#1a237e"}}>2. Практическая часть</h3>
+          
+          <div className="mb-3">
+            <label htmlFor="practiceContent" className="form-label fw-medium">Описание практического задания:</label>
+            <textarea 
+              id="practiceContent"
+              className="form-control"
+              value={practiceContent}
+              onChange={(e) => setPracticeContent(e.target.value)}
+              rows={4}
+              placeholder="Введите описание практического задания..."
+            />
+          </div>
+          
+          <div className="bg-light p-3 rounded mb-4">
+            <h4 className="fw-medium mb-3" style={{color: "#1a237e"}}>Задания:</h4>
+            
+            <ul className="list-group mb-3">
+              {tasks.map((task, index) => (
+                <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                  <div className="me-auto">{task}</div>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm rounded-circle"
+                    style={{width: '30px', height: '30px', padding: '0'}}
+                    onClick={() => handleDeleteTask(index)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+            
+            <div className="row g-2">
+              <div className="col-md-10">
+                <input
+                  type="text"
+                  placeholder="Новое задание"
+                  value={newTask}
+                  onChange={(e) => setNewTask(e.target.value)}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-md-2">
+                <button
+                  type="button"
+                  className="btn text-white w-100"
+                  style={{backgroundColor: "#1a237e"}}
+                  onClick={handleAddTask}
+                >
+                  Добавить
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-light p-3 rounded">
+            <h4 className="fw-medium mb-3" style={{color: "#1a237e"}}>Дополнительные материалы для практики:</h4>
+            
+            <ul className="list-group mb-3">
+              {practiceResources.map((resource, index) => (
+                <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                  <div className="me-auto">
+                    <div className="fw-medium">{resource.title}</div>
+                    {resource.url && <div className="small" style={{color: "#1a237e"}}>{resource.url}</div>}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm rounded-circle"
+                    style={{width: '30px', height: '30px', padding: '0'}}
+                    onClick={() => handleDeletePracticeResource(index)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+            
+            <div className="row g-2">
+              <div className="col-md-5">
+                <input
+                  type="text"
+                  placeholder="Название материала"
+                  value={newPracticeResource.title}
+                  onChange={(e) => setNewPracticeResource({ ...newPracticeResource, title: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-md-5">
+                <input
+                  type="text"
+                  placeholder="URL (необязательно)"
+                  value={newPracticeResource.url || ""}
+                  onChange={(e) => setNewPracticeResource({ ...newPracticeResource, url: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-md-2">
+                <button
+                  type="button"
+                  className="btn text-white w-100"
+                  style={{backgroundColor: "#1a237e"}}
+                  onClick={handleAddPracticeResource}
+                >
+                  Добавить
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        <div className="d-flex justify-content-between mt-4">
+          <button
+            type="button"
+            className="btn btn-success"
+            onClick={handleSaveChanges}
+          >
+            Сохранить изменения
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleCancelEdit}
+          >
+            Отменить
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
       <Navbar />
       <main className="container">
-        <div className={styles.lessonContainer}>
+        <div className="lessonContainer">
           {loading ? (
-            <div className={styles.loadingContainer}>
-              <div className={styles.loader}></div>
+            <div className="loadingContainer">
+              <div className="loader"></div>
               <p>Загрузка материалов урока...</p>
             </div>
-          ) : lessonData ? (
+          ) : (
             <>
-              <div className={styles.lessonHeader}>
-                <Link href="/materials" className={styles.backLink}>
-                  ← Вернуться к темам
-                </Link>
-                <div className={styles.lessonInfo}>
-                  <h4 className={styles.classSubject}>
+              <div className="mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <Link href="/materials" className="text-decoration-none fw-medium" style={{color: "#1a237e"}}>
+                    ← Вернуться к темам
+                  </Link>
+                  {!editMode && (
+                    <button 
+                      className="btn text-white"
+                      style={{backgroundColor: "#1a237e"}}
+                      onClick={toggleEditMode}
+                    >
+                      {lessonData ? "Редактировать" : "Создать материал"}
+                    </button>
+                  )}
+                </div>
+                <div className="card p-4 shadow-sm">
+                  <h4 className="text-secondary mb-2">
                     {lessonClass} класс - {subject}
                   </h4>
-                  <h1 className={styles.topicTitle}>{topic}</h1>
+                  <h1 className="fw-bold" style={{color: "#1a237e"}}>{topic}</h1>
                 </div>
               </div>
 
-              <div className={styles.lessonContent}>
-                {/* Секция 1: Теоретические материалы */}
-                <section className={styles.section}>
-                  <h2 className={styles.sectionTitle}>
-                    <span className={styles.sectionNumber}>1</span> Изучение материала
-                  </h2>
-                  <div className={styles.theoryCard}>
-                    {lessonData.theory.type === "text" && (
-                      <div className={styles.theoryText}>
-                        <p>{lessonData.theory.content}</p>
-                      </div>
-                    )}
+              {editMode ? (
+                renderEditForm()
+              ) : lessonData ? (
+                // Просмотр материала
+                <div className="row g-4">
+                  {/* Секция 1: Теоретические материалы */}
+                  <section className="col-12 mb-4">
+                    <h2 className="d-flex align-items-center mb-3">
+                      <span className="d-flex align-items-center justify-content-center text-white rounded-circle me-2" 
+                        style={{width: '36px', height: '36px', backgroundColor: "#1a237e"}}>1</span>
+                      <span className="fw-bold" style={{color: "#1a237e"}}>Изучение материала</span>
+                    </h2>
+                    <div className="card p-4 shadow-sm">
+                      {lessonData.theory.type === "text" && (
+                        <div className="mb-4">
+                          <p className="fs-5 lh-lg text-dark">{lessonData.theory.content}</p>
+                        </div>
+                      )}
 
-                    {lessonData.theory.additional && (
-                      <div className={styles.additionalResources}>
-                        <h3>Дополнительные материалы:</h3>
-                        <ul>
-                          {lessonData.theory.additional.map((resource: Resource, index: number) => (
-                            <li key={index}>
-                              {resource.url ? (
-                                <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                                  {resource.title} 🔗
-                                </a>
-                              ) : (
-                                <span>{resource.title}</span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </section>
+                      {lessonData.theory.additional && lessonData.theory.additional.length > 0 && (
+                        <div className="bg-light p-4 rounded">
+                          <h3 className="fs-5 fw-bold mb-3" style={{color: "#1a237e"}}>Дополнительные материалы:</h3>
+                          <ul className="list-unstyled ps-3">
+                            {lessonData.theory.additional.map((resource: Resource, index: number) => (
+                              <li key={index} className="mb-2 position-relative ps-3">
+                                <span className="position-absolute" style={{left: '-10px', top: '2px'}}>•</span>
+                                {resource.url ? (
+                                  <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-decoration-none fw-medium" style={{color: "#1a237e"}}>
+                                    {resource.title} 🔗
+                                  </a>
+                                ) : (
+                                  <span>{resource.title}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </section>
 
-                {/* Секция 2: Практические задания */}
-                <section className={styles.section}>
-                  <h2 className={styles.sectionTitle}>
-                    <span className={styles.sectionNumber}>2</span> Задания для закрепления
-                  </h2>
-                  <div className={styles.practiceCard}>
-                    <p>{lessonData.practice.content}</p>
+                  {/* Секция 2: Практические задания */}
+                  <section className="col-12">
+                    <h2 className="d-flex align-items-center mb-3">
+                      <span className="d-flex align-items-center justify-content-center text-white rounded-circle me-2" 
+                        style={{width: '36px', height: '36px', backgroundColor: "#1a237e"}}>2</span>
+                      <span className="fw-bold" style={{color: "#1a237e"}}>Задания для закрепления</span>
+                    </h2>
+                    <div className="card p-4 shadow-sm">
+                      <p className="fs-5 mb-4">{lessonData.practice.content}</p>
 
-                    {lessonData.practice.tasks && (
-                      <div className={styles.tasksList}>
-                        <ol>
-                          {lessonData.practice.tasks.map((task: string, index: number) => (
-                            <li key={index} className={styles.taskItem}>{task}</li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
+                      {lessonData.practice.tasks && lessonData.practice.tasks.length > 0 && (
+                        <div className="mb-4">
+                          <ol className="ps-3">
+                            {lessonData.practice.tasks.map((task: string, index: number) => (
+                              <li key={index} className="mb-3 fs-5">{task}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
 
-                    {lessonData.practice.additional && (
-                      <div className={styles.additionalResources}>
-                        <h3>Дополнительные задания:</h3>
-                        <ul>
-                          {lessonData.practice.additional.map((resource: Resource, index: number) => (
-                            <li key={index}>
-                              {resource.url ? (
-                                <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                                  {resource.title} 🔗
-                                </a>
-                              ) : (
-                                <span>{resource.title}</span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </section>
-              </div>
+                      {lessonData.practice.additional && lessonData.practice.additional.length > 0 && (
+                        <div className="bg-light p-4 rounded">
+                          <h3 className="fs-5 fw-bold mb-3" style={{color: "#1a237e"}}>Дополнительные задания:</h3>
+                          <ul className="list-unstyled ps-3">
+                            {lessonData.practice.additional.map((resource: Resource, index: number) => (
+                              <li key={index} className="mb-2 position-relative ps-3">
+                                <span className="position-absolute" style={{left: '-10px', top: '2px'}}>•</span>
+                                {resource.url ? (
+                                  <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-decoration-none fw-medium" style={{color: "#1a237e"}}>
+                                    {resource.title} 🔗
+                                  </a>
+                                ) : (
+                                  <span>{resource.title}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              ) : (
+                // Если материалов нет и не в режиме редактирования
+                <div className="card p-5 text-center shadow-sm">
+                  <h2 className="fw-bold mb-3" style={{color: "#1a237e"}}>Материалы не найдены</h2>
+                  <p className="fs-5 mb-4">Для выбранной темы пока не добавлены учебные материалы.</p>
+                  <button 
+                    className="btn text-white btn-lg mx-auto"
+                    style={{backgroundColor: "#1a237e", maxWidth: '250px'}}
+                    onClick={toggleEditMode}
+                  >
+                    Создать материал
+                  </button>
+                </div>
+              )}
             </>
-          ) : (
-            <div className={styles.noDataContainer}>
-              <h2>Материалы не найдены</h2>
-              <p>Для выбранной темы пока не добавлены учебные материалы.</p>
-              <Link href="/materials" className={styles.backLink}>
-                ← Вернуться к темам
-              </Link>
-            </div>
           )}
         </div>
       </main>

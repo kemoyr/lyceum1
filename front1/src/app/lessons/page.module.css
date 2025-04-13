@@ -216,3 +216,374 @@
     font-size: 1rem;
   }
 }
+
+/* Стили для верхней панели с кнопками */
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.editBtn {
+  background-color: #1a237e;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.editBtn:hover {
+  background-color: #303f9f;
+}
+
+.createMaterialBtn {
+  background-color: #1a237e;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+  margin-top: 1rem;
+}
+
+.createMaterialBtn:hover {
+  background-color: #303f9f;
+}
+
+/* Стили для форм редактирования */
+.editForm {
+  background-color: #f8f9fa;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+}
+
+.createFormContainer {
+  background-color: #f0f4ff;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+}
+
+.createFormContainer h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1a237e;
+  margin-bottom: 1rem;
+}
+
+.createFormContainer p {
+  font-size: 1.1rem;
+  color: #424242;
+  margin-bottom: 2rem;
+}
+
+.formSection {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.formSection:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.formSectionTitle {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1a237e;
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #424242;
+}
+
+.textArea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.textArea:focus {
+  outline: none;
+  border-color: #1a237e;
+  box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.1);
+}
+
+/* Стили для секции ресурсов */
+.resourcesSection {
+  background-color: #f0f4ff;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.resourcesSection h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a237e;
+  margin: 0 0 1rem;
+}
+
+.resourcesList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+
+.resourceItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.resourceInfo {
+  flex: 1;
+}
+
+.resourceTitle {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.resourceUrl {
+  display: block;
+  font-size: 0.9rem;
+  color: #1a237e;
+  word-break: break-all;
+}
+
+.deleteResourceBtn {
+  background-color: #e53935;
+  color: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 1rem;
+}
+
+.deleteResourceBtn:hover {
+  background-color: #c62828;
+}
+
+.addResourceForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.resourceInput {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.resourceInput:focus {
+  outline: none;
+  border-color: #1a237e;
+  box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.1);
+}
+
+.addResourceBtn {
+  background-color: #1a237e;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  height: 38px;
+}
+
+.addResourceBtn:hover {
+  background-color: #303f9f;
+}
+
+/* Стили для секции заданий */
+.tasksSection {
+  background-color: #f0f4ff;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.tasksSection h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a237e;
+  margin: 0 0 1rem;
+}
+
+.taskEditList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+
+.taskEditItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.taskContent {
+  flex: 1;
+}
+
+.deleteTaskBtn {
+  background-color: #e53935;
+  color: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 1rem;
+}
+
+.deleteTaskBtn:hover {
+  background-color: #c62828;
+}
+
+.addTaskForm {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.taskInput {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.taskInput:focus {
+  outline: none;
+  border-color: #1a237e;
+  box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.1);
+}
+
+.addTaskBtn {
+  background-color: #1a237e;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  height: 38px;
+}
+
+.addTaskBtn:hover {
+  background-color: #303f9f;
+}
+
+/* Кнопки в нижней части формы */
+.formActions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
+
+.saveBtn {
+  background-color: #4caf50;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.saveBtn:hover {
+  background-color: #388e3c;
+}
+
+.cancelBtn {
+  background-color: #9e9e9e;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.cancelBtn:hover {
+  background-color: #757575;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+  .editForm {
+    padding: 1.5rem;
+  }
+  
+  .addResourceForm {
+    grid-template-columns: 1fr;
+  }
+  
+  .formActions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .saveBtn, .cancelBtn {
+    width: 100%;
+  }
+}
