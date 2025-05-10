@@ -587,3 +587,164 @@
     width: 100%;
   }
 }
+
+.pageTitle {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #1a237e;
+  margin-bottom: 1rem;
+}
+
+.pageDescription {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.error {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.editButton {
+  background-color: #1a237e;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.editButton:hover {
+  background-color: #283593;
+}
+
+.editContainer {
+  background-color: #f5f5f5;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.section h2 {
+  color: #1a237e;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.editTextarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  resize: vertical;
+}
+
+.editButtons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.saveButton {
+  background-color: #2e7d32;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.saveButton:hover {
+  background-color: #388e3c;
+}
+
+.cancelButton {
+  background-color: #757575;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.cancelButton:hover {
+  background-color: #616161;
+}
+
+.contentContainer {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.content {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.tasks {
+  background-color: #f5f5f5;
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin-bottom: 2rem;
+}
+
+.tasks h3 {
+  color: #1a237e;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.tasks ol {
+  padding-left: 1.5rem;
+}
+
+.tasks li {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.additional {
+  background-color: #e8eaf6;
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin-bottom: 2rem;
+}
+
+.additional h3 {
+  color: #1a237e;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.additional ul {
+  list-style: none;
+  padding: 0;
+}
+
+.additional li {
+  margin-bottom: 0.5rem;
+}
+
+.additional a {
+  color: #1a237e;
+  text-decoration: none;
+}
+
+.additional a:hover {
+  text-decoration: underline;
+}

@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status # type: ignore
+from fastapi import FastAPI, Depends, HTTPException, status, Query # type: ignore
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm # type: ignore
 from fastapi.middleware.cors import CORSMiddleware # type: ignore
-from pydantic import BaseModel # type: ignore
-from typing import Optional
+from pydantic import BaseModel, RootModel # type: ignore
+from typing import Optional, List, Dict
 import jwt # type: ignore
 from datetime import datetime, timedelta
 import os
@@ -19,6 +19,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Секретный ключ для JWT
@@ -57,6 +58,32 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     username: str
     disabled: bool
+
+# Модели для учебных материалов
+class Resource(BaseModel):
+    title: str
+    url: Optional[str] = None
+
+class TheoryContent(BaseModel):
+    type: str
+    content: str
+    additional: List[Resource]
+
+class PracticeContent(BaseModel):
+    type: str
+    content: str
+    tasks: List[str]
+    additional: List[Resource]
+
+class LessonData(BaseModel):
+    theory: TheoryContent
+    practice: PracticeContent
+
+class SubjectTopics(RootModel):
+    root: Dict[str, LessonData]
+
+class LessonMaterials(RootModel):
+    root: Dict[str, SubjectTopics]
 
 # Хранилище пользователей (в реальном приложении используйте базу данных)
 def get_users_db():
@@ -133,6 +160,50 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+# Функция для работы с файлом материалов
+def get_materials_db():
+    materials_db_file = os.path.join(os.path.dirname(__file__), "materials.json")
+    
+    if not os.path.exists(materials_db_file):
+        # Создаем файл с начальными данными, если его нет
+        initial_data = {
+            "Математика": {
+                "Целые числа и действия над ними": {
+                    "theory": {
+                        "type": "text",
+                        "content": "Целые числа включают в себя натуральные числа (1, 2, 3, ...), ноль (0) и отрицательные числа (-1, -2, -3, ...).",
+                        "additional": [
+                            {
+                                "title": "Видео: Действия с целыми числами",
+                                "url": "https://www.youtube.com/watch?v=example1"
+                            }
+                        ]
+                    },
+                    "practice": {
+                        "type": "tasks",
+                        "content": "Для закрепления материала решите следующие задачи:",
+                        "tasks": [
+                            "Вычислите: (-5) + 8",
+                            "Вычислите: 12 - (-3)"
+                        ],
+                        "additional": [
+                            {
+                                "title": "Интерактивный тест по теме",
+                                "url": "https://www.mathtest.ru/test/integers"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        with open(materials_db_file, "w") as f:
+            json.dump(initial_data, f, indent=4)
+    
+    with open(materials_db_file, "r") as f:
+        materials_db = json.load(f)
+    
+    return materials_db
 
 # API эндпоинты
 @app.get("/")
@@ -282,6 +353,115 @@ async def delete_user(
         json.dump(users_db, f, indent=4)
     
     return {"message": "User deleted successfully"}
+
+# Эндпоинты для работы с материалами
+@app.get("/materials")
+async def get_materials():
+    """
+    Получение всех учебных материалов
+    """
+    try:
+        materials = get_materials_db()
+        return materials
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.get("/materials/{subject}/{topic}")
+async def get_lesson_material(
+    subject: str,
+    topic: str
+):
+    """
+    Получение материала по конкретной теме
+    """
+    try:
+        materials = get_materials_db()
+        if subject not in materials:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Предмет '{subject}' не найден"
+            )
+        if topic not in materials[subject]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Тема '{topic}' не найдена в предмете '{subject}'"
+            )
+        return materials[subject][topic]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.post("/materials/{subject}/{topic}", response_model=LessonData)
+async def create_lesson_material(
+    subject: str,
+    topic: str,
+    lesson_data: LessonData,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Создание или обновление материала по теме (требуется авторизация)
+    """
+    try:
+        materials = get_materials_db()
+        if subject not in materials:
+            materials[subject] = {}
+        
+        materials[subject][topic] = lesson_data.dict()
+        
+        materials_db_file = os.path.join(os.path.dirname(__file__), "materials.json")
+        with open(materials_db_file, "w") as f:
+            json.dump(materials, f, indent=4)
+        
+        return lesson_data
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.delete("/materials/{subject}/{topic}")
+async def delete_lesson_material(
+    subject: str,
+    topic: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Удаление материала по теме (требуется авторизация)
+    """
+    try:
+        materials = get_materials_db()
+        if subject not in materials:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Предмет '{subject}' не найден"
+            )
+        if topic not in materials[subject]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Тема '{topic}' не найдена в предмете '{subject}'"
+            )
+        
+        del materials[subject][topic]
+        
+        materials_db_file = os.path.join(os.path.dirname(__file__), "materials.json")
+        with open(materials_db_file, "w") as f:
+            json.dump(materials, f, indent=4)
+        
+        return {"message": f"Материал по теме '{topic}' успешно удален"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 # Запуск приложения
 if __name__ == "__main__":
