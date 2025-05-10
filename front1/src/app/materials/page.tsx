@@ -1,7 +1,7 @@
 "use client";
 
 import Navbar from "../../navbar/Navbar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./page.module.css";
 
 // Примерные данные о темах для разных классов и предметов
@@ -149,6 +149,31 @@ export default function Materials() {
   const [showTopics, setShowTopics] = useState(false);
   const [newTopic, setNewTopic] = useState("");
   const [topicsData, setTopicsData] = useState(educationTopics);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Проверка авторизации при загрузке страницы
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await fetch(`http://localhost:8000/check-token?token=${token}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          const data = await response.json();
+          setIsAuthenticated(data.valid);
+          console.log('Auth check response:', data);
+        }
+      } catch (error) {
+        console.error('Ошибка при проверке авторизации:', error);
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   // Обработчик кнопки "Показать темы"
   const handleShowTopics = () => {
@@ -321,29 +346,31 @@ export default function Materials() {
           
           {showTopics && (
             <>
-              <div style={inlineStyles.addTopicContainer}>
-                <h3 style={inlineStyles.addTopicTitle}>Добавить новую тему</h3>
-                <div style={inlineStyles.addTopicForm}>
-                  <input
-                    type="text"
-                    style={inlineStyles.topicInput}
-                    placeholder="Введите название новой темы"
-                    value={newTopic}
-                    onChange={(e) => setNewTopic(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                  />
-                  <button
-                    style={{
-                      ...inlineStyles.addTopicBtn,
-                      ...(newTopic ? {} : inlineStyles.addTopicBtnDisabled)
-                    }}
-                    onClick={handleAddTopic}
-                    disabled={!newTopic}
-                  >
-                    Добавить
-                  </button>
+              {isAuthenticated && (
+                <div style={inlineStyles.addTopicContainer}>
+                  <h3 style={inlineStyles.addTopicTitle}>Добавить новую тему</h3>
+                  <div style={inlineStyles.addTopicForm}>
+                    <input
+                      type="text"
+                      style={inlineStyles.topicInput}
+                      placeholder="Введите название новой темы"
+                      value={newTopic}
+                      onChange={(e) => setNewTopic(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                    />
+                    <button
+                      style={{
+                        ...inlineStyles.addTopicBtn,
+                        ...(newTopic ? {} : inlineStyles.addTopicBtnDisabled)
+                      }}
+                      onClick={handleAddTopic}
+                      disabled={!newTopic}
+                    >
+                      Добавить
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
               
               <div className={styles.topicsContainer}>
                 <h2 className={styles.topicsTitle}>
@@ -355,13 +382,15 @@ export default function Materials() {
                     {topics.map((topic, index) => (
                       <li key={index} className={styles.topicItem}>
                         <div className={styles.topicCard}>
-                          <button
-                            onClick={() => handleDeleteTopic(index)}
-                            className={styles.deleteBtn}
-                            title="Удалить тему"
-                          >
-                            ✕
-                          </button>
+                          {isAuthenticated && (
+                            <button
+                              onClick={() => handleDeleteTopic(index)}
+                              className={styles.deleteBtn}
+                              title="Удалить тему"
+                            >
+                              ✕
+                            </button>
+                          )}
                           <h3 className={styles.topicTitle}>{topic}</h3>
                           <a href={`/lessons?class=${selectedClass}&subject=${encodeURIComponent(selectedSubject)}&topic=${encodeURIComponent(topic)}`} className={styles.topicLink}>
                             Перейти к материалам

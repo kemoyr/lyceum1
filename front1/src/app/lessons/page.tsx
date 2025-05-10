@@ -264,6 +264,7 @@ export default function Lessons() {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [lessonMaterials, setLessonMaterials] = useState<LessonMaterialsType>(lessonMaterialsData);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Состояние для форм редактирования
   const [theoryContent, setTheoryContent] = useState("");
@@ -276,6 +277,29 @@ export default function Lessons() {
   const [newTheoryResource, setNewTheoryResource] = useState<Resource>({ title: "" });
   const [newPracticeResource, setNewPracticeResource] = useState<Resource>({ title: "" });
   const [newTask, setNewTask] = useState("");
+
+  // Проверка авторизации при загрузке страницы
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await fetch(`http://localhost:8000/check-token?token=${token}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          const data = await response.json();
+          setIsAuthenticated(data.valid);
+        }
+      } catch (error) {
+        console.error('Ошибка при проверке авторизации:', error);
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const classParam = searchParams.get("class");
@@ -621,7 +645,7 @@ export default function Lessons() {
                   <Link href="/materials" className="text-decoration-none fw-medium" style={{color: "#1a237e"}}>
                     ← Вернуться к темам
                   </Link>
-                  {!editMode && (
+                  {!editMode && isAuthenticated && (
                     <button 
                       className="btn text-white"
                       style={{backgroundColor: "#1a237e"}}
