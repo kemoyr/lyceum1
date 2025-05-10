@@ -1,32 +1,85 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { isAuthenticated, logout, getCurrentUser } from '../utils/api';
 import styles from './Navbar.module.css';
-import Link from 'next/link'
 
 export default function Navbar() {
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [userData, setUserData] = useState<{ username: string } | null>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            if (isAuthenticated()) {
+                setIsLoggedIn(true);
+                try {
+                    const user = await getCurrentUser();
+                    setUserData(user);
+                } catch (err) {
+                    console.error('Ошибка получения данных пользователя:', err);
+                }
+            }
+        };
+        
+        checkAuth();
+    }, []);
+
+    const handleLogout = () => {
+        logout();
+        setIsLoggedIn(false);
+        setUserData(null);
+        router.push('/login');
+    };
+
     return (
-        <div className={styles["navbar-container"]}>
+        <div className={styles.navbar}>
             <div className="container">
-                <header className={`d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-2 mb-3 border-bottom ${styles["navbar-header"]}`}>
-                    <div className="col-md-3 mb-2 mb-md-0">
-                        <Link href="/" className="d-inline-flex link-body-emphasis text-decoration-none">
-                            <img src="/Logo.png" alt="logo" className={styles.logo} />
+                <header className={styles.header}>
+                    <div className={styles.logo}>
+                        <Link href="/" className={styles.logoLink}>
+                            <img src="/Logo.png" alt="logo" width={120} height={80} />
                         </Link>
                     </div>
-                
-                    <ul className="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-                        <li><a href="https://www.innopolis.com/en/services/innopolis-lyceum" className={`nav-link px-2 ${styles["nav-link"]}`}>О нас</a></li>
-                        <li><Link href="/materials" className={`nav-link px-2 ${styles["nav-link"]}`}>Учебные материалы</Link></li>
-                        <li><a href="https://bio.site/innolyceum" className={`nav-link px-2 ${styles["nav-link"]}`}>Соц сети</a></li>
-                        {/* <li><a href="#" className="nav-link px-2">About</a></li> */}
+
+                    <ul className={styles.navLinks}>
+                        <li>
+                            <a href="https://www.innopolis.com/en/services/innopolis-lyceum" className={styles.navLink}>
+                                О нас
+                            </a>
+                        </li>
+                        <li>
+                            <Link href="/materials" className={styles.navLink}>
+                                Учебные материалы
+                            </Link>
+                        </li>
+                        <li>
+                            <a href="https://bio.site/innolyceum" className={styles.navLink}>
+                                Соц сети
+                            </a>
+                        </li>
                     </ul>
-                
-                    <div className="col-md-3 text-end">
-                        {/* <button type="button" className="btn btn-outline-primary me-2">Login</button> */}
-                        <Link href="/login">
-                            <span className={styles["custom-login-btn"]}>Войти</span>
-                        </Link>
+
+                    <div className={styles.authButtons}>
+                        {isLoggedIn ? (
+                            <div className={styles.userMenu}>
+                                <Link href="/profile" className={styles.profileButton}>
+                                    {userData?.username || 'Личный кабинет'}
+                                </Link>
+                                <button onClick={handleLogout} className={styles.logoutButton}>
+                                    Выйти
+                                </button>
+                            </div>
+                        ) : (
+                            <Link href="/login" className={styles.loginButton}>
+                                Войти
+                            </Link>
+                        )}
                     </div>
                 </header>
             </div>
-        </div> 
-    )
+        </div>
+    );
 }

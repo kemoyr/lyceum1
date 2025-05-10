@@ -1,4 +1,4 @@
-@tailwind base;
+/* @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -16,10 +16,10 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
-}
+} */
 
 /* Стили для контейнеров */
-.form-container {
+/* .form-container {
   background-color: #f8f9fa;
   padding: 2rem;
   border-radius: 0.5rem;
@@ -28,7 +28,7 @@ body {
 }
 
 /* Стили для кнопок */
-.btn {
+/* .btn {
   background-color: #1a237e;
   color: white;
   padding: 0.5rem 1rem;
@@ -54,4 +54,4 @@ body {
 
 .btn-success:hover {
   background-color: #388e3c;
-} 
+}   */
