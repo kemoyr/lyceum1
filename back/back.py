@@ -1,13 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi import FastAPI, Depends, HTTPException, status # type: ignore
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm # type: ignore
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
+from pydantic import BaseModel # type: ignore
 from typing import Optional
-import jwt
+import jwt # type: ignore
 from datetime import datetime, timedelta
 import os
 import json
-from passlib.context import CryptContext
+from passlib.context import CryptContext # type: ignore
 
 # Настройка FastAPI приложения
 app = FastAPI(title="Бэкенд для авторизации")
@@ -47,6 +47,16 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+# Модель для создания пользователя
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+# Модель для ответа с пользователями
+class UserResponse(BaseModel):
+    username: str
+    disabled: bool
 
 # Хранилище пользователей (в реальном приложении используйте базу данных)
 def get_users_db():
@@ -202,7 +212,78 @@ async def check_token(token: str = None):
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
+@app.get("/users", response_model=list[UserResponse])
+async def get_users(current_user: User = Depends(get_current_active_user)):
+    """
+    Получение списка всех пользователей (только для авторизованных)
+    """
+    users_db = get_users_db()
+    return [UserResponse(username=username, disabled=user["disabled"]) 
+            for username, user in users_db.items()]
+
+@app.post("/users", response_model=UserResponse)
+async def create_user(
+    user: UserCreate,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Создание нового пользователя (только для авторизованных)
+    """
+    users_db = get_users_db()
+    
+    if user.username in users_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Username already registered"
+        )
+    
+    hashed_password = get_password_hash(user.password)
+    new_user = {
+        "username": user.username,
+        "hashed_password": hashed_password,
+        "disabled": False
+    }
+    
+    users_db[user.username] = new_user
+    
+    # Сохраняем обновленную базу пользователей
+    with open(os.path.join(os.path.dirname(__file__), "users.json"), "w") as f:
+        json.dump(users_db, f, indent=4)
+    
+    return UserResponse(username=user.username, disabled=False)
+
+@app.delete("/users/{username}")
+async def delete_user(
+    username: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Удаление пользователя (только для авторизованных)
+    """
+    users_db = get_users_db()
+    
+    if username not in users_db:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+    
+    # Нельзя удалить самого себя
+    if username == current_user.username:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete yourself"
+        )
+    
+    del users_db[username]
+    
+    # Сохраняем обновленную базу пользователей
+    with open(os.path.join(os.path.dirname(__file__), "users.json"), "w") as f:
+        json.dump(users_db, f, indent=4)
+    
+    return {"message": "User deleted successfully"}
+
 # Запуск приложения
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn # type: ignore
     uvicorn.run(app, host="0.0.0.0", port=8000)
