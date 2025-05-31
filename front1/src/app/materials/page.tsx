@@ -100,7 +100,8 @@ export default function Materials() {
 
   const handleShowTopics = () => {
     if (selectedClass && selectedSubject) {
-      setTopics(Object.keys(topicsData[selectedSubject] || {}));
+      const effectiveSubjectName = `${selectedSubject} (${selectedClass} класс)`;
+      setTopics(Object.keys(topicsData[effectiveSubjectName] || {}));
       setShowTopics(true);
     } else {
       setShowTopics(false);
@@ -116,6 +117,8 @@ export default function Materials() {
           return;
         }
 
+        const effectiveSubjectName = `${selectedSubject} (${selectedClass} класс)`;
+
         const newLessonData: LessonData = {
           theory: {
             type: "text",
@@ -130,7 +133,7 @@ export default function Materials() {
           }
         };
 
-        const response = await fetch(`http://localhost:8000/materials/${selectedSubject}/${newTopic}`, {
+        const response = await fetch(`http://localhost:8000/materials/${effectiveSubjectName}/${newTopic}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -174,8 +177,9 @@ export default function Materials() {
         setError('Необходима авторизация');
         return;
       }
+      const effectiveSubjectName = `${selectedSubject} (${selectedClass} класс)`;
 
-      const response = await fetch(`http://localhost:8000/materials/${selectedSubject}/${topicToDelete}`, {
+      const response = await fetch(`http://localhost:8000/materials/${effectiveSubjectName}/${topicToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -315,25 +319,28 @@ export default function Materials() {
                 
                 {topics.length > 0 ? (
                   <ul className={styles.topicsList}>
-                    {topics.map((topic) => (
-                      <li key={topic} className={styles.topicItem}>
-                        <div className={styles.topicCard}>
-                          {isAuthenticated && (
-                            <button
-                              onClick={() => handleDeleteTopic(topic)}
-                              className={styles.deleteBtn}
-                              title="Удалить тему"
-                            >
-                              ✕
-                            </button>
-                          )}
-                          <h3 className={styles.topicTitle}>{topic}</h3>
-                          <a href={`/lessons?class=${selectedClass}&subject=${encodeURIComponent(selectedSubject)}&topic=${encodeURIComponent(topic)}`} className={styles.topicLink}>
-                            Перейти к материалам
-                          </a>
-                        </div>
-                      </li>
-                    ))}
+                    {topics.map((topic) => {
+                      const effectiveSubjectName = selectedSubject && selectedClass ? `${selectedSubject} (${selectedClass} класс)` : selectedSubject;
+                      return (
+                        <li key={topic} className={styles.topicItem}>
+                          <div className={styles.topicCard}>
+                            {isAuthenticated && (
+                              <button
+                                onClick={() => handleDeleteTopic(topic)}
+                                className={styles.deleteBtn}
+                                title="Удалить тему"
+                              >
+                                ✕
+                              </button>
+                            )}
+                            <h3 className={styles.topicTitle}>{topic}</h3>
+                            <a href={`/lessons?class=${selectedClass}&subject=${encodeURIComponent(effectiveSubjectName)}&topic=${encodeURIComponent(topic)}`} className={styles.topicLink}>
+                              Перейти к материалам
+                            </a>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className={styles.noTopicsMessage}>
