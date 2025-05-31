@@ -13,10 +13,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [authorized, setAuthorized] = useState(false);
   
   useEffect(() => {
-    // Проверка авторизации пользователя
     const checkAuth = () => {
       if (!isAuthenticated()) {
-        // Если пользователь не авторизован, перенаправляем его на страницу входа
         router.push('/login');
       } else {
         setAuthorized(true);
@@ -25,7 +23,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
     
     checkAuth();
     
-    // Добавляем обработчик событий истории браузера для перепроверки авторизации
     const handleRouteChange = () => {
       checkAuth();
     };
@@ -37,6 +34,5 @@ export function AuthGuard({ children }: AuthGuardProps) {
     };
   }, [router]);
   
-  // Показываем контент только если пользователь авторизован
   return authorized ? <>{children}</> : null;
 } 

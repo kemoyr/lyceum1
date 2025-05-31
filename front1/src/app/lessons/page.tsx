@@ -6,7 +6,6 @@ import Navbar from "../../navbar/Navbar";
 import Link from "next/link";
 import styles from "./page.module.css";
 
-// Типы для учебных материалов
 type Resource = {
   title: string;
   url?: string;
@@ -41,19 +40,16 @@ export default function Lessons() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState("");
   
-  // Состояние для форм редактирования
   const [theoryContent, setTheoryContent] = useState("");
   const [practiceContent, setPracticeContent] = useState("");
   const [theoryResources, setTheoryResources] = useState<Resource[]>([]);
   const [practiceResources, setPracticeResources] = useState<Resource[]>([]);
   const [tasks, setTasks] = useState<string[]>([]);
   
-  // Вспомогательные состояния для добавления новых элементов
   const [newTheoryResource, setNewTheoryResource] = useState<Resource>({ title: "" });
   const [newPracticeResource, setNewPracticeResource] = useState<Resource>({ title: "" });
   const [newTask, setNewTask] = useState("");
 
-  // Проверка авторизации при загрузке страницы
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -76,7 +72,6 @@ export default function Lessons() {
     checkAuth();
   }, []);
 
-  // Загрузка данных урока
   useEffect(() => {
     const loadLessonData = async () => {
       const classParam = searchParams.get("class");
@@ -106,14 +101,12 @@ export default function Lessons() {
           const data = await response.json();
           setLessonData(data);
           
-          // Инициализация состояний формы для режима редактирования
           setTheoryContent(data.theory.content);
           setPracticeContent(data.practice.content);
           setTheoryResources([...data.theory.additional]);
           setPracticeResources([...data.practice.additional]);
           setTasks([...data.practice.tasks]);
         } else if (response.status === 404) {
-          // Если материал не найден, показываем сообщение о возможности создания
           setLessonData(null);
           setError('');
         } else {
@@ -131,7 +124,6 @@ export default function Lessons() {
     loadLessonData();
   }, [searchParams]);
 
-  // Обработчики для формы редактирования
   const handleAddTheoryResource = () => {
     if (newTheoryResource.title.trim()) {
       setTheoryResources([...theoryResources, { ...newTheoryResource }]);
@@ -165,12 +157,10 @@ export default function Lessons() {
     setTasks(tasks.filter((_, i) => i !== index));
   };
 
-  // Переключение режима редактирования
   const toggleEditMode = () => {
     setEditMode(!editMode);
   };
 
-  // Сохранение изменений
   const handleSaveChanges = async () => {
     if (!subject || !topic) return;
 
@@ -181,7 +171,6 @@ export default function Lessons() {
         return;
       }
 
-      // Создаем обновленный объект с данными урока
       const updatedLessonData: LessonData = {
         theory: {
           type: "text",
@@ -219,7 +208,6 @@ export default function Lessons() {
   };
 
   const handleCancelEdit = () => {
-    // Отмена редактирования - возвращаем исходные данные
     if (lessonData) {
       setTheoryContent(lessonData.theory.content);
       setPracticeContent(lessonData.practice.content);
@@ -230,11 +218,9 @@ export default function Lessons() {
     setEditMode(false);
   };
 
-  // Форма для редактирования материала
   const renderEditForm = () => {
     return (
       <div className={styles.editForm}>
-        {/* Редактирование теоретической части */}
         <section className={styles.formSection}>
           <h3 className={styles.formSectionTitle}>1. Теоретическая часть</h3>
           
@@ -297,7 +283,6 @@ export default function Lessons() {
           </div>
         </section>
         
-        {/* Редактирование практической части */}
         <section className={styles.formSection}>
           <h3 className={styles.formSectionTitle}>2. Практическая часть</h3>
           
@@ -465,9 +450,7 @@ export default function Lessons() {
                   </div>
                 )
               ) : lessonData ? (
-                // Просмотр материала
                 <div className={styles.lessonContent}>
-                  {/* Секция 1: Теоретические материалы */}
                   <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>
                       <span className={styles.sectionNumber}>1</span>
@@ -501,7 +484,6 @@ export default function Lessons() {
                     </div>
                   </section>
 
-                  {/* Секция 2: Практические задания */}
                   <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>
                       <span className={styles.sectionNumber}>2</span>
@@ -542,7 +524,6 @@ export default function Lessons() {
                   </section>
                 </div>
               ) : (
-                // Если материалов нет и не в режиме редактирования
                 <div className={styles.noDataContainer}>
                   <h2>Материалы не найдены</h2>
                   <p>Для выбранной темы пока не добавлены учебные материалы.</p>

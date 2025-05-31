@@ -16,7 +16,6 @@ export default function Login() {
     const router = useRouter();
 
     useEffect(() => {
-        // Проверяем авторизацию при загрузке компонента
         const checkAuth = async () => {
             if (isAuthenticated()) {
                 setIsLoggedIn(true);
@@ -62,15 +61,12 @@ export default function Login() {
                 throw new Error(data.detail || "Ошибка при входе в систему");
             }
 
-            // Сохраняем токен в localStorage
             localStorage.setItem("token", data.access_token);
             setIsLoggedIn(true);
             
-            // Получаем данные пользователя
             const user = await getCurrentUser();
             setUserData(user);
             
-            // Перенаправляем на главную страницу
             router.push("/");
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Произошла ошибка при входе в систему");

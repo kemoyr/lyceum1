@@ -21,7 +21,6 @@ export default function Profile() {
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Загрузка списка пользователей
     const loadUsers = async () => {
         try {
             const data = await fetchWithAuth('/users');
@@ -36,7 +35,6 @@ export default function Profile() {
         loadUsers();
     }, []);
 
-    // Создание нового пользователя
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -54,7 +52,7 @@ export default function Profile() {
 
             setSuccess('Пользователь успешно создан');
             setNewUser({ username: '', password: '' });
-            loadUsers(); // Перезагружаем список пользователей
+            loadUsers();
         } catch (err: unknown) {
             const error = err as ApiError;
             setError(error.message || 'Ошибка при создании пользователя');
@@ -63,7 +61,6 @@ export default function Profile() {
         }
     };
 
-    // Удаление пользователя
     const handleDeleteUser = async (username: string) => {
         if (!confirm(`Вы уверены, что хотите удалить пользователя ${username}?`)) {
             return;
@@ -75,7 +72,7 @@ export default function Profile() {
             });
 
             setSuccess('Пользователь успешно удален');
-            loadUsers(); // Перезагружаем список пользователей
+            loadUsers();
         } catch (err: unknown) {
             const error = err as ApiError;
             setError(error.message || 'Ошибка при удалении пользователя');
@@ -92,7 +89,6 @@ export default function Profile() {
                     {error && <div className={styles.error}>{error}</div>}
                     {success && <div className={styles.success}>{success}</div>}
 
-                    {/* Форма создания пользователя */}
                     <div className={styles.createUserForm}>
                         <h2>Создать нового пользователя</h2>
                         <form onSubmit={handleCreateUser}>
@@ -126,7 +122,6 @@ export default function Profile() {
                         </form>
                     </div>
 
-                    {/* Список пользователей */}
                     <div className={styles.usersList}>
                         <h2>Список пользователей</h2>
                         <div className={styles.usersTable}>

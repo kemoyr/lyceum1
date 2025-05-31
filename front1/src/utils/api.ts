@@ -1,7 +1,6 @@
 // Базовый URL API
 const API_URL = 'http://localhost:8000';
 
-// Получение токена из localStorage
 export const getToken = (): string | null => {
   if (typeof window !== 'undefined') {
     return localStorage.getItem('token');
@@ -9,12 +8,10 @@ export const getToken = (): string | null => {
   return null;
 };
 
-// Проверка авторизации пользователя
 export const isAuthenticated = (): boolean => {
   return !!getToken();
 };
 
-// Выход из системы
 export const logout = (): void => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('token');
@@ -22,7 +19,6 @@ export const logout = (): void => {
   }
 };
 
-// Получение данных о текущем пользователе
 export const getCurrentUser = async () => {
   const token = getToken();
   
@@ -47,7 +43,6 @@ export const getCurrentUser = async () => {
   return await response.json();
 };
 
-// Функция для выполнения защищенных запросов к API
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const token = getToken();
   

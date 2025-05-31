@@ -4,7 +4,6 @@ import Navbar from "../../navbar/Navbar";
 import { useState, useEffect } from "react";
 import styles from "./page.module.css";
 
-// Типы для учебных материалов
 type Resource = {
   title: string;
   url?: string;
@@ -36,7 +35,6 @@ type LessonMaterialsType = {
   [subject: string]: SubjectTopics;
 };
 
-// Список предметов для выбора
 const subjects = ["Математика", "Информатика", "Физика"];
 
 export default function Materials() {
@@ -50,7 +48,6 @@ export default function Materials() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Проверка авторизации при загрузке страницы
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -73,7 +70,6 @@ export default function Materials() {
     checkAuth();
   }, []);
 
-  // Загрузка материалов при монтировании компонента
   useEffect(() => {
     const loadMaterials = async () => {
       try {
@@ -102,7 +98,6 @@ export default function Materials() {
     loadMaterials();
   }, []);
 
-  // Обработчик кнопки "Показать темы"
   const handleShowTopics = () => {
     if (selectedClass && selectedSubject) {
       setTopics(Object.keys(topicsData[selectedSubject] || {}));
@@ -112,7 +107,6 @@ export default function Materials() {
     }
   };
 
-  // Обработчик добавления новой темы
   const handleAddTopic = async () => {
     if (newTopic && selectedClass && selectedSubject) {
       try {
@@ -150,10 +144,8 @@ export default function Materials() {
           throw new Error(errorData.detail || 'Ошибка при создании темы');
         }
 
-        // Обновляем список тем
         setTopics([...topics, newTopic]);
         setNewTopic("");
-        // Перезагружаем все материалы
         const materialsResponse = await fetch('http://localhost:8000/materials', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -171,7 +163,6 @@ export default function Materials() {
     }
   };
 
-  // Обработчик удаления темы
   const handleDeleteTopic = async (topicToDelete: string) => {
     if (!confirm(`Вы уверены, что хотите удалить тему "${topicToDelete}"?`)) {
       return;
@@ -197,9 +188,7 @@ export default function Materials() {
         throw new Error(errorData.detail || 'Ошибка при удалении темы');
       }
 
-      // Обновляем список тем
       setTopics(topics.filter(topic => topic !== topicToDelete));
-      // Перезагружаем все материалы
       const materialsResponse = await fetch('http://localhost:8000/materials', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -216,7 +205,6 @@ export default function Materials() {
     }
   };
 
-  // Обработчик нажатия Enter в поле ввода
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && newTopic) {
       handleAddTopic();

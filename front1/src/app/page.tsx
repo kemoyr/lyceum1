@@ -6,7 +6,6 @@ export default function Home() {
     <div>
       <Navbar />
       <main className="container">
-        {/* Hero Section */}
         <section className={styles.hero + " text-center"}>
           <div className="row">
             <div className="col-md-10 mx-auto">
@@ -17,7 +16,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* About Lyceum Section */}
         <section className={styles.section}>
           <div className="row">
             <div className="col-md-6">
@@ -35,7 +33,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Features Section */}
         <section className={styles.section}>
           <h2 className={styles["section-title"] + " text-center"}>Возможности образовательного портала</h2>
           <div className="row">
@@ -60,7 +57,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Education Focus */}
         <section className={styles.section}>
           <h2 className={styles["section-title"] + " text-center"}>Образовательный фокус лицея</h2>
           <div className="row">
@@ -87,7 +83,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Contact Info */}
         <section className={styles["contact-info"] + " mb-5"}>
           <h3>Контактная информация</h3>
           <div className={styles["contact-item"]}>

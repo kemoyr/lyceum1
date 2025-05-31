@@ -12,7 +12,6 @@ body {
   background: rgb(var(--background-rgb));
 }
 
-/* Кастомные цвета */
 .text-custom-primary {
   color: var(--primary-color) !important;
 }
@@ -27,7 +26,6 @@ body {
   padding: 0 1rem;
 }
 
-/* Общие стили для страницы уроков */
 .lessonContainer {
   padding: 2rem 0;
   max-width: 1000px;
@@ -57,7 +55,6 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Стили для контейнеров */
 .form-container {
   background-color: #f8f9fa;
   padding: 2rem;
@@ -66,7 +63,6 @@ body {
   margin-bottom: 2rem;
 }
 
-/* Стили для кнопок */
 .btn {
   background-color: #1a237e;
   color: white;
