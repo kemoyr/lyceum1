@@ -4,4 +4,11 @@ pyjwt==2.8.0
 passlib==1.7.4
 python-multipart==0.0.6
 bcrypt==4.0.1
-pydantic==2.3.0 
+pydantic==2.3.0
+Flask
+Flask-Cors
+Werkzeug
+requests
+pandas
+psycopg2-binary
+numpy 

@@ -5,9 +5,9 @@ from pydantic import BaseModel, RootModel # type: ignore
 from typing import Optional, List, Dict
 import jwt # type: ignore
 from datetime import datetime, timedelta
-import os
-import json
 from passlib.context import CryptContext # type: ignore
+import psycopg2 # type: ignore
+from psycopg2.extras import RealDictCursor # type: ignore
 
 # Настройка FastAPI приложения
 app = FastAPI(title="Бэкенд для авторизации")
@@ -26,6 +26,13 @@ app.add_middleware(
 SECRET_KEY = "your_secret_key"  # В реальном приложении используйте безопасный ключ
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Параметры подключения к PostgreSQL (ЗАМЕНИТЕ НА ВАШИ ДАННЫЕ)
+DB_HOST = "localhost"
+DB_NAME = "mydatabase"
+DB_USER = "kemori"
+DB_PASS = "02160216"
+DB_PORT = "5432"
 
 # Хэширование паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -85,27 +92,6 @@ class SubjectTopics(RootModel):
 class LessonMaterials(RootModel):
     root: Dict[str, SubjectTopics]
 
-# Хранилище пользователей (в реальном приложении используйте базу данных)
-def get_users_db():
-    users_db_file = os.path.join(os.path.dirname(__file__), "users.json")
-    
-    if not os.path.exists(users_db_file):
-        # Создаем файл с тестовым пользователем, если его нет
-        test_user = {
-            "admin": {
-                "username": "admin",
-                "hashed_password": get_password_hash("admin"),
-                "disabled": False
-            }
-        }
-        with open(users_db_file, "w") as f:
-            json.dump(test_user, f)
-    
-    with open(users_db_file, "r") as f:
-        users_db = json.load(f)
-    
-    return users_db
-
 # Функции для работы с паролями
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -114,13 +100,107 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 # Функции для аутентификации
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+def get_user(username: str):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    user_record = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if user_record:
+        return UserInDB(**user_record)
+    return None
 
-def authenticate_user(users_db, username: str, password: str):
-    user = get_user(users_db, username)
+def get_db_connection():
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS,
+        port=DB_PORT
+    )
+    return conn
+
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Создание таблицы users
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            hashed_password VARCHAR(255) NOT NULL,
+            disabled BOOLEAN DEFAULT FALSE
+        );
+    """)
+
+    # Создание таблицы subjects
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS subjects (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) UNIQUE NOT NULL
+        );
+    """)
+
+    # Создание таблицы topics
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS topics (
+            id SERIAL PRIMARY KEY,
+            subject_id INTEGER REFERENCES subjects(id) ON DELETE CASCADE,
+            name VARCHAR(255) NOT NULL,
+            UNIQUE (subject_id, name)
+        );
+    """)
+
+    # Создание таблицы materials
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS materials (
+            id SERIAL PRIMARY KEY,
+            topic_id INTEGER REFERENCES topics(id) ON DELETE CASCADE,
+            type VARCHAR(50) NOT NULL, -- 'theory' or 'practice'
+            content_type VARCHAR(50) NOT NULL, -- 'text' or 'tasks'
+            content TEXT
+        );
+    """)
+
+    # Создание таблицы additional_materials
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS additional_materials (
+            id SERIAL PRIMARY KEY,
+            material_id INTEGER REFERENCES materials(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            url VARCHAR(255)
+        );
+    """)
+
+    # Создание таблицы practice_tasks
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS practice_tasks (
+            id SERIAL PRIMARY KEY,
+            material_id INTEGER REFERENCES materials(id) ON DELETE CASCADE,
+            task_description TEXT NOT NULL
+        );
+    """)
+    
+    # Добавление тестового пользователя admin, если его еще нет
+    cursor.execute("SELECT username FROM users WHERE username = 'admin';")
+    if not cursor.fetchone():
+        hashed_password = get_password_hash("admin")
+        cursor.execute(
+            "INSERT INTO users (username, hashed_password, disabled) VALUES (%s, %s, %s);",
+            ("admin", hashed_password, False)
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+# Вызов init_db() при старте приложения
+init_db()
+
+def authenticate_user(username: str, password: str):
+    user = get_user(username)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -151,7 +231,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         token_data = TokenData(username=username)
     except jwt.PyJWTError:
         raise credentials_exception
-    user = get_user(get_users_db(), username=token_data.username)
+    user = get_user(username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -160,50 +240,6 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
-# Функция для работы с файлом материалов
-def get_materials_db():
-    materials_db_file = os.path.join(os.path.dirname(__file__), "materials.json")
-    
-    if not os.path.exists(materials_db_file):
-        # Создаем файл с начальными данными, если его нет
-        initial_data = {
-            "Математика": {
-                "Целые числа и действия над ними": {
-                    "theory": {
-                        "type": "text",
-                        "content": "Целые числа включают в себя натуральные числа (1, 2, 3, ...), ноль (0) и отрицательные числа (-1, -2, -3, ...).",
-                        "additional": [
-                            {
-                                "title": "Видео: Действия с целыми числами",
-                                "url": "https://www.youtube.com/watch?v=example1"
-                            }
-                        ]
-                    },
-                    "practice": {
-                        "type": "tasks",
-                        "content": "Для закрепления материала решите следующие задачи:",
-                        "tasks": [
-                            "Вычислите: (-5) + 8",
-                            "Вычислите: 12 - (-3)"
-                        ],
-                        "additional": [
-                            {
-                                "title": "Интерактивный тест по теме",
-                                "url": "https://www.mathtest.ru/test/integers"
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-        with open(materials_db_file, "w") as f:
-            json.dump(initial_data, f, indent=4)
-    
-    with open(materials_db_file, "r") as f:
-        materials_db = json.load(f)
-    
-    return materials_db
 
 # API эндпоинты
 @app.get("/")
@@ -234,8 +270,7 @@ async def test_endpoint():
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    users_db = get_users_db()
-    user = authenticate_user(users_db, form_data.username, form_data.password)
+    user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -263,7 +298,7 @@ async def check_token(token: str = None):
             return {"valid": False, "error": "Invalid token payload"}
         
         # Проверяем, есть ли пользователь
-        user = get_user(get_users_db(), username)
+        user = get_user(username)
         if not user:
             return {"valid": False, "error": "User not found"}
         
@@ -284,184 +319,433 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 @app.get("/users", response_model=list[UserResponse])
-async def get_users(current_user: User = Depends(get_current_active_user)):
+async def get_all_users(current_user: User = Depends(get_current_active_user)):
     """
     Получение списка всех пользователей (только для авторизованных)
     """
-    users_db = get_users_db()
-    return [UserResponse(username=username, disabled=user["disabled"]) 
-            for username, user in users_db.items()]
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT username, disabled FROM users")
+    users_records = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return [UserResponse(**user) for user in users_records]
 
 @app.post("/users", response_model=UserResponse)
-async def create_user(
-    user: UserCreate,
-    current_user: User = Depends(get_current_active_user)
+async def create_new_user(
+    user_data: UserCreate,
+    current_user: User = Depends(get_current_active_user) # Оставляем для проверки прав (например, только админ может создавать)
 ):
     """
     Создание нового пользователя (только для авторизованных)
     """
-    users_db = get_users_db()
-    
-    if user.username in users_db:
+    # Проверка, если нужно, что current_user имеет права на создание новых пользователей
+    # if current_user.username != "admin": 
+    #     raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    existing_user = get_user(user_data.username)
+    if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Username already registered"
         )
     
-    hashed_password = get_password_hash(user.password)
-    new_user = {
-        "username": user.username,
-        "hashed_password": hashed_password,
-        "disabled": False
-    }
+    hashed_password = get_password_hash(user_data.password)
     
-    users_db[user.username] = new_user
-    
-    # Сохраняем обновленную базу пользователей
-    with open(os.path.join(os.path.dirname(__file__), "users.json"), "w") as f:
-        json.dump(users_db, f, indent=4)
-    
-    return UserResponse(username=user.username, disabled=False)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, hashed_password, disabled) VALUES (%s, %s, %s) RETURNING username, disabled",
+            (user_data.username, hashed_password, False)
+        )
+        new_user_record = cursor.fetchone()
+        conn.commit()
+    except psycopg2.Error as e: # Обработка возможных ошибок БД
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
-@app.delete("/users/{username}")
-async def delete_user(
-    username: str,
+    if not new_user_record:
+        raise HTTPException(status_code=500, detail="Failed to create user")
+    
+    # RealDictCursor не используется для INSERT RETURNING, так что new_user_record будет кортежем
+    return UserResponse(username=new_user_record[0], disabled=new_user_record[1])
+
+@app.delete("/users/{username_to_delete}") # Изменено имя параметра для ясности
+async def delete_existing_user(
+    username_to_delete: str,
     current_user: User = Depends(get_current_active_user)
 ):
     """
     Удаление пользователя (только для авторизованных)
     """
-    users_db = get_users_db()
-    
-    if username not in users_db:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-    
-    # Нельзя удалить самого себя
-    if username == current_user.username:
+    # Проверка, если нужно, что current_user имеет права на удаление (например, админ)
+    # или что пользователь удаляет сам себя (если это разрешено, но сейчас запрещено)
+
+    if username_to_delete == current_user.username:
         raise HTTPException(
             status_code=400,
             detail="Cannot delete yourself"
         )
     
-    del users_db[username]
+    # Проверка, существует ли пользователь перед удалением
+    user_to_delete = get_user(username_to_delete)
+    if not user_to_delete:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM users WHERE username = %s RETURNING username", (username_to_delete,))
+        deleted_user_record = cursor.fetchone()
+        conn.commit()
+    except psycopg2.Error as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+    if not deleted_user_record:
+        # Это может произойти, если пользователь был удален между get_user и DELETE
+        raise HTTPException(
+            status_code=404,
+            detail="User not found or already deleted"
+        )
     
-    # Сохраняем обновленную базу пользователей
-    with open(os.path.join(os.path.dirname(__file__), "users.json"), "w") as f:
-        json.dump(users_db, f, indent=4)
-    
-    return {"message": "User deleted successfully"}
+    return {"message": f"User '{deleted_user_record[0]}' deleted successfully"}
 
 # Эндпоинты для работы с материалами
 @app.get("/materials")
-async def get_materials():
+async def get_all_materials_from_db():
     """
-    Получение всех учебных материалов
+    Получение всех учебных материалов из БД
     """
-    try:
-        materials = get_materials_db()
-        return materials
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    materials_data = {}
 
-@app.get("/materials/{subject}/{topic}")
-async def get_lesson_material(
-    subject: str,
-    topic: str
+    try:
+        # 1. Получаем все предметы
+        cursor.execute("SELECT id, name FROM subjects ORDER BY name")
+        subjects = cursor.fetchall()
+
+        for subject in subjects:
+            subject_name = subject['name']
+            materials_data[subject_name] = {}
+
+            # 2. Для каждого предмета получаем его темы
+            cursor.execute("SELECT id, name FROM topics WHERE subject_id = %s ORDER BY name", (subject['id'],))
+            topics = cursor.fetchall()
+
+            for topic in topics:
+                topic_name = topic['name']
+                lesson_data = {"theory": None, "practice": None}
+
+                # 3. Для каждой темы получаем ее материалы (теория и практика)
+                cursor.execute("""
+                    SELECT id, type, content_type, content 
+                    FROM materials 
+                    WHERE topic_id = %s
+                """, (topic['id'],))
+                topic_materials = cursor.fetchall()
+
+                for material in topic_materials:
+                    material_type = material['type'] # 'theory' or 'practice'
+                    content_data = {
+                        "type": material['content_type'],
+                        "content": material['content'],
+                        "additional": [],
+                        "tasks": [] # Только для практики
+                    }
+
+                    # 4. Получаем дополнительные материалы (ресурсы)
+                    cursor.execute("""
+                        SELECT title, url 
+                        FROM additional_materials 
+                        WHERE material_id = %s 
+                        ORDER BY id
+                    """, (material['id'],))
+                    additional_resources = cursor.fetchall()
+                    content_data["additional"] = [Resource(**res) for res in additional_resources]
+
+                    if material_type == 'theory':
+                        lesson_data['theory'] = TheoryContent(**content_data)
+                    elif material_type == 'practice':
+                        # 5. Для практических материалов получаем задачи
+                        cursor.execute("""
+                            SELECT task_description 
+                            FROM practice_tasks 
+                            WHERE material_id = %s 
+                            ORDER BY id
+                        """, (material['id'],))
+                        practice_tasks_records = cursor.fetchall()
+                        content_data["tasks"] = [rec['task_description'] for rec in practice_tasks_records]
+                        lesson_data['practice'] = PracticeContent(**content_data)
+                
+                materials_data[subject_name][topic_name] = LessonData(**lesson_data)
+       
+    except psycopg2.Error as e:
+        # В случае ошибки можно вернуть пустой объект или ошибку сервера
+        raise HTTPException(status_code=500, detail=f"Database error while fetching materials: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+       
+    return materials_data
+
+@app.get("/materials/{subject_name}/{topic_name}")
+async def get_specific_lesson_material(
+    subject_name: str,
+    topic_name: str
 ):
     """
-    Получение материала по конкретной теме
+    Получение материала по конкретной теме из БД
     """
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    lesson_data = {"theory": None, "practice": None}
+
     try:
-        materials = get_materials_db()
-        if subject not in materials:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Предмет '{subject}' не найден"
-            )
-        if topic not in materials[subject]:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Тема '{topic}' не найдена в предмете '{subject}'"
-            )
-        return materials[subject][topic]
-    except HTTPException:
+        # 1. Найти ID предмета
+        cursor.execute("SELECT id FROM subjects WHERE name = %s", (subject_name,))
+        subject_record = cursor.fetchone()
+        if not subject_record:
+            raise HTTPException(status_code=404, detail=f"Предмет '{subject_name}' не найден")
+        subject_id = subject_record['id']
+
+        # 2. Найти ID темы
+        cursor.execute("SELECT id FROM topics WHERE subject_id = %s AND name = %s", (subject_id, topic_name))
+        topic_record = cursor.fetchone()
+        if not topic_record:
+            raise HTTPException(status_code=404, detail=f"Тема '{topic_name}' не найдена в предмете '{subject_name}'")
+        topic_id = topic_record['id']
+
+        # 3. Получить материалы (теория и практика) для этой темы
+        cursor.execute("""
+            SELECT id, type, content_type, content 
+            FROM materials 
+            WHERE topic_id = %s
+        """, (topic_id,))
+        topic_materials = cursor.fetchall()
+
+        if not topic_materials:
+            # Если для темы нет материалов, это может быть ошибкой или просто пустая тема
+             raise HTTPException(status_code=404, detail=f"Материалы для темы '{topic_name}' не найдены")
+
+        for material in topic_materials:
+            material_type = material['type']
+            content_data = {
+                "type": material['content_type'],
+                "content": material['content'],
+                "additional": [],
+                "tasks": []
+            }
+
+            # 4. Получить дополнительные материалы (ресурсы)
+            cursor.execute("""
+                SELECT title, url 
+                FROM additional_materials 
+                WHERE material_id = %s 
+                ORDER BY id
+            """, (material['id'],))
+            additional_resources = cursor.fetchall()
+            content_data["additional"] = [Resource(**res) for res in additional_resources]
+
+            if material_type == 'theory':
+                lesson_data['theory'] = TheoryContent(**content_data)
+            elif material_type == 'practice':
+                # 5. Для практических материалов получить задачи
+                cursor.execute("""
+                    SELECT task_description 
+                    FROM practice_tasks 
+                    WHERE material_id = %s 
+                    ORDER BY id
+                """, (material['id'],))
+                practice_tasks_records = cursor.fetchall()
+                content_data["tasks"] = [rec['task_description'] for rec in practice_tasks_records]
+                lesson_data['practice'] = PracticeContent(**content_data)
+        
+        # Убедимся, что и теория и практика были найдены, если они должны быть
+        # Pydantic модели LessonData ожидают оба поля. Если одно из них None, нужно решить, как это обрабатывать.
+        # Можно возвращать частичные данные или требовать наличия обоих.
+        # Для простоты, если чего-то нет, оно останется None, и Pydantic может выдать ошибку, если поля обязательные.
+        # Если поля в TheoryContent/PracticeContent опциональные или имеют default, это сработает.
+        # Проверим, что наши Pydantic модели TheoryContent и PracticeContent могут быть созданы с None.
+        # Если LessonData требует и theory и practice, то нужно обеспечить их наличие или изменить модель.
+        # В данном случае, если нет теории или практики, соответствующее поле в lesson_data останется None.
+        # Модель LessonData(theory: TheoryContent, practice: PracticeContent) требует оба. 
+        # Это значит, что тема ДОЛЖНА иметь и теорию и практику.
+        # Если это не так, нужно либо сделать поля в LessonData Optional, либо обеспечить их создание.
+        # Пока оставим как есть, подразумевая, что каждая тема имеет и теорию и практику.
+
+    except HTTPException: # Перехватываем свои же HTTPException, чтобы не попасть в общий psycopg2.Error
         raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    except psycopg2.Error as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+    
+    # Если после всех операций lesson_data все еще содержит None для theory или practice,
+    # а модель LessonData их требует, будет ошибка валидации Pydantic.
+    # Это правильное поведение, если мы ожидаем, что каждая тема ПОЛНОСТЬЮ укомплектована.
+    if not lesson_data["theory"] or not lesson_data["practice"]:
+        # Можно вернуть ошибку, если тема не полная
+        raise HTTPException(status_code=404, detail=f"Тема '{topic_name}' не содержит всех необходимых материалов (теория/практика)")
 
-@app.post("/materials/{subject}/{topic}", response_model=LessonData)
-async def create_lesson_material(
-    subject: str,
-    topic: str,
-    lesson_data: LessonData,
-    current_user: User = Depends(get_current_active_user)
+    return LessonData(**lesson_data)
+
+@app.post("/materials/{subject_name}/{topic_name}", response_model=LessonData)
+async def create_or_update_lesson_material(
+    subject_name: str,
+    topic_name: str,
+    lesson_data_payload: LessonData, # Изменено имя переменной
+    current_user: User = Depends(get_current_active_user) # Авторизация
 ):
     """
-    Создание или обновление материала по теме (требуется авторизация)
+    Создание или обновление материала по теме в БД (требуется авторизация)
     """
-    try:
-        materials = get_materials_db()
-        if subject not in materials:
-            materials[subject] = {}
-        
-        materials[subject][topic] = lesson_data.dict()
-        
-        materials_db_file = os.path.join(os.path.dirname(__file__), "materials.json")
-        with open(materials_db_file, "w") as f:
-            json.dump(materials, f, indent=4)
-        
-        return lesson_data
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-@app.delete("/materials/{subject}/{topic}")
-async def delete_lesson_material(
-    subject: str,
-    topic: str,
-    current_user: User = Depends(get_current_active_user)
+    try:
+        conn.autocommit = False # Начинаем транзакцию
+
+        # 1. Найти или создать предмет
+        cursor.execute("SELECT id FROM subjects WHERE name = %s", (subject_name,))
+        subject_record = cursor.fetchone()
+        if subject_record:
+            subject_id = subject_record['id']
+        else:
+            cursor.execute("INSERT INTO subjects (name) VALUES (%s) RETURNING id", (subject_name,))
+            subject_id = cursor.fetchone()['id']
+
+        # 2. Найти или создать тему
+        cursor.execute("SELECT id FROM topics WHERE subject_id = %s AND name = %s", (subject_id, topic_name))
+        topic_record = cursor.fetchone()
+        if topic_record:
+            topic_id = topic_record['id']
+            # Если тема существует, удаляем старые материалы, чтобы перезаписать
+            # Сначала зависимые: additional_materials и practice_tasks
+            cursor.execute("""
+                DELETE FROM additional_materials 
+                WHERE material_id IN (SELECT id FROM materials WHERE topic_id = %s)
+            """, (topic_id,))
+            cursor.execute("""
+                DELETE FROM practice_tasks 
+                WHERE material_id IN (SELECT id FROM materials WHERE topic_id = %s AND type = 'practice')
+            """, (topic_id,))
+            # Затем сами материалы темы
+            cursor.execute("DELETE FROM materials WHERE topic_id = %s", (topic_id,))
+        else:
+            cursor.execute("INSERT INTO topics (subject_id, name) VALUES (%s, %s) RETURNING id", (subject_id, topic_name))
+            topic_id = cursor.fetchone()['id']
+
+        # 3. Сохранить теорию
+        theory_payload = lesson_data_payload.theory
+        cursor.execute("""
+            INSERT INTO materials (topic_id, type, content_type, content) 
+            VALUES (%s, 'theory', %s, %s) RETURNING id
+        """, (topic_id, theory_payload.type, theory_payload.content))
+        theory_material_id = cursor.fetchone()['id']
+
+        for res in theory_payload.additional:
+            cursor.execute("""
+                INSERT INTO additional_materials (material_id, title, url) 
+                VALUES (%s, %s, %s)
+            """, (theory_material_id, res.title, res.url))
+
+        # 4. Сохранить практику
+        practice_payload = lesson_data_payload.practice
+        cursor.execute("""
+            INSERT INTO materials (topic_id, type, content_type, content) 
+            VALUES (%s, 'practice', %s, %s) RETURNING id
+        """, (topic_id, practice_payload.type, practice_payload.content))
+        practice_material_id = cursor.fetchone()['id']
+
+        for task_desc in practice_payload.tasks:
+            cursor.execute("""
+                INSERT INTO practice_tasks (material_id, task_description) 
+                VALUES (%s, %s)
+            """, (practice_material_id, task_desc))
+
+        for res in practice_payload.additional:
+            cursor.execute("""
+                INSERT INTO additional_materials (material_id, title, url) 
+                VALUES (%s, %s, %s)
+            """, (practice_material_id, res.title, res.url))
+
+        conn.commit() # Фиксируем транзакцию
+        conn.autocommit = True
+
+    except psycopg2.Error as e:
+        conn.rollback() # Откатываем изменения в случае ошибки
+        conn.autocommit = True
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+       
+    return lesson_data_payload # Возвращаем исходные данные, так как они были успешно сохранены
+
+@app.delete("/materials/{subject_name}/{topic_name}")
+async def delete_specific_lesson_material(
+    subject_name: str,
+    topic_name: str,
+    current_user: User = Depends(get_current_active_user) # Авторизация
 ):
     """
-    Удаление материала по теме (требуется авторизация)
+    Удаление материала по теме из БД (требуется авторизация)
+    Удаляет тему и все связанные с ней материалы.
+    Если предмет после удаления темы не содержит других тем, он остается.
     """
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    deleted_topic_name = None
+
     try:
-        materials = get_materials_db()
-        if subject not in materials:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Предмет '{subject}' не найден"
-            )
-        if topic not in materials[subject]:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Тема '{topic}' не найдена в предмете '{subject}'"
-            )
+        conn.autocommit = False
+        # 1. Найти ID предмета
+        cursor.execute("SELECT id FROM subjects WHERE name = %s", (subject_name,))
+        subject_record = cursor.fetchone()
+        if not subject_record:
+            raise HTTPException(status_code=404, detail=f"Предмет '{subject_name}' не найден")
+        subject_id = subject_record['id']
+
+        # 2. Найти ID темы и удалить ее (каскадное удаление в БД позаботится об остальном)
+        # Связанные записи в `materials`, `additional_materials`, `practice_tasks` будут удалены
+        # благодаря ON DELETE CASCADE в определениях таблиц.
+        cursor.execute("DELETE FROM topics WHERE subject_id = %s AND name = %s RETURNING name", (subject_id, topic_name))
+        deleted_topic_record = cursor.fetchone()
         
-        del materials[subject][topic]
+        if not deleted_topic_record:
+            raise HTTPException(status_code=404, detail=f"Тема '{topic_name}' не найдена в предмете '{subject_name}'")
         
-        materials_db_file = os.path.join(os.path.dirname(__file__), "materials.json")
-        with open(materials_db_file, "w") as f:
-            json.dump(materials, f, indent=4)
-        
-        return {"message": f"Материал по теме '{topic}' успешно удален"}
-    except HTTPException:
+        deleted_topic_name = deleted_topic_record['name']
+        conn.commit()
+        conn.autocommit = True
+
+    except HTTPException: # Перехват своих ошибок
+        conn.rollback()
+        conn.autocommit = True
         raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    except psycopg2.Error as e:
+        conn.rollback()
+        conn.autocommit = True
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+       
+    return {"message": f"Материал по теме '{deleted_topic_name}' в предмете '{subject_name}' успешно удален"}
 
 # Запуск приложения
 if __name__ == "__main__":
