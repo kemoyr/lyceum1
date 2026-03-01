@@ -9,7 +9,7 @@ from passlib.context import CryptContext # type: ignore
 import psycopg2 # type: ignore
 from psycopg2.extras import RealDictCursor # type: ignore
 
-app = FastAPI(title="Бэкенд для авторизации")
+app = FastAPI(title="Backend for authorisation")
 
 app.add_middleware(
     CORSMiddleware,
@@ -223,7 +223,7 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 @app.get("/")
 async def root():
     """
-    Корневой маршрут с информацией о доступных эндпоинтах
+    Root route with information about available endpoints
     """
     return {
         "message": "API Authentication is working",
@@ -239,7 +239,7 @@ async def root():
 @app.get("/test")
 async def test_endpoint():
     """
-    Тестовый эндпоинт для проверки работоспособности сервера
+    Test endpoint for checking server performance
     """
     return {
         "status": "success",
@@ -264,7 +264,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @app.get("/check-token")
 async def check_token(token: str = None):
     """
-    Проверка валидности токена без аутентификации
+    Checking token validity without authentication
     """
     if not token:
         return {"valid": False, "error": "No token provided"}
@@ -297,7 +297,7 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
 @app.get("/users", response_model=list[UserResponse])
 async def get_all_users(current_user: User = Depends(get_current_active_user)):
     """
-    Получение списка всех пользователей (только для авторизованных)
+    Obtaining a list of all users
     """
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -313,7 +313,7 @@ async def create_new_user(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Создание нового пользователя (только для авторизованных)
+    Creating a new user
     """
 
     existing_user = get_user(user_data.username)
@@ -352,7 +352,7 @@ async def delete_existing_user(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Удаление пользователя (только для авторизованных)
+    Deleting a user
     """
     if username_to_delete == current_user.username:
         raise HTTPException(
@@ -391,7 +391,7 @@ async def delete_existing_user(
 @app.get("/materials")
 async def get_all_materials_from_db():
     """
-    Получение всех учебных материалов из БД
+    Obtaining all training materials from the database
     """
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -467,7 +467,7 @@ async def get_specific_lesson_material(
     topic_name: str
 ):
     """
-    Получение материала по конкретной теме из БД
+    Obtaining material on a specific topic from a database
     """
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -548,7 +548,7 @@ async def create_or_update_lesson_material(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Создание или обновление материала по теме в БД (требуется авторизация)
+    Creating or updating material on a topic in the database
     """
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -633,9 +633,9 @@ async def delete_specific_lesson_material(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Удаление материала по теме из БД (требуется авторизация)
-    Удаляет тему и все связанные с ней материалы.
-    Если предмет после удаления темы не содержит других тем, он остается.
+    Deleting material on a topic from the database
+    Deletes the topic and all related material.
+    If the subject does not contain any other topics after the topic is deleted, it remains.
     """
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
